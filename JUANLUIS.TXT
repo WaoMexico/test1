@@ -1,0 +1,102 @@
+IDENTIFICATION DIVISION.
+       PROGRAM-ID. JUANLUIS.
+      * PROGRAMA QUE COMPARA DOS ARCHIVOS DE CUENTAS Y GENERA UN ARCHIVO
+      * CON LAS CUENTAS NUEVAS QUE APARECEN EN EL ARCHIVO DE HOY PERO NO
+      * EN EL DE AYER.
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       SOURCE-COMPUTER. PC.
+       OBJECT-COMPUTER. PC.
+       INPUT-OUTPUT SECTION.
+       FILE-CONTROL.
+           SELECT CUENTAS-AYER         ASSIGN TO DISK "CUENTAS-AYER.TXT"
+                                       ORGANIZATION IS LINE SEQUENTIAL
+                                       ACCESS MODE  IS SEQUENTIAL
+                                       FILE STATUS  IS WS-STATUS-AYER.
+           SELECT CUENTAS-HOY          ASSIGN TO DISK "CUENTAS-HOY.TXT"
+                                       ORGANIZATION IS LINE SEQUENTIAL
+                                       ACCESS MODE  IS SEQUENTIAL
+                                       FILE STATUS  IS WS-STATUS-HOY.
+           SELECT CUENTAS-NUEVAS       ASSIGN TO DISK "CUENTAS-NUEVAS.TXT"
+                                       ORGANIZATION IS LINE SEQUENTIAL
+                                       ACCESS MODE  IS SEQUENTIAL
+                                       FILE STATUS  IS WS-STATUS-NUEVAS.
+       DATA DIVISION.
+       FILE SECTION.
+       FD  CUENTAS-AYER.
+       01  REG-AYER.
+           05  AYER-CUENTA            PIC  X(010).
+           05  AYER-CLIENTE           PIC  9(008).
+       FD  CUENTAS-HOY.
+       01  REG-HOY.
+           05  HOY-CUENTA             PIC  X(010).
+           05  HOY-CLIENTE            PIC  9(008).
+       FD  CUENTAS-NUEVAS.
+       01  REG-NUEVAS.
+           05  NUEVA-CUENTA           PIC  X(010).
+           05  NUEVA-CLIENTE          PIC  9(008).
+       WORKING-STORAGE SECTION.
+       01  WS-STATUS-AYER             PIC  X(002) VALUE SPACES.
+       01  WS-STATUS-HOY              PIC  X(002) VALUE SPACES.
+       01  WS-STATUS-NUEVAS           PIC  X(002) VALUE SPACES.
+       01  WS-EOF-AYER                PIC  X(001) VALUE 'N'.
+           88  WS-EOF-AYER-YES        VALUE 'Y'.
+           88  WS-EOF-AYER-NO         VALUE 'N'.
+       01  WS-EOF-HOY                 PIC  X(001) VALUE 'N'.
+           88  WS-EOF-HOY-YES         VALUE 'Y'.
+           88  WS-EOF-HOY-NO          VALUE 'N'.
+       01  WS-CUENTA-AYER             PIC  X(010).
+       01  WS-CUENTA-HOY              PIC  X(010).
+       PROCEDURE DIVISION.
+       000000-RAIZ.
+           PERFORM 100000-INICIO
+           PERFORM 200000-LEER-PRIMEROS-REGISTROS
+           PERFORM 300000-COMPARAR-CUENTAS UNTIL WS-EOF-AYER-YES AND WS-EOF-HOY-YES
+           PERFORM 400000-CERRAR-ARCHIVOS
+           STOP RUN.
+       100000-INICIO.
+           OPEN INPUT                  CUENTAS-AYER
+           OPEN INPUT                  CUENTAS-HOY
+           OPEN OUTPUT                 CUENTAS-NUEVAS.
+       200000-LEER-PRIMEROS-REGISTROS.
+           PERFORM 210000-LEER-AYER
+           PERFORM 220000-LEER-HOY.
+       210000-LEER-AYER.
+           READ CUENTAS-AYER INTO REG-AYER
+                AT END
+                   SET WS-EOF-AYER-YES TO TRUE
+                NOT AT END
+                   MOVE AYER-CUENTA TO WS-CUENTA-AYER
+           END-READ.
+       220000-LEER-HOY.
+           READ CUENTAS-HOY INTO REG-HOY
+                AT END
+                   SET WS-EOF-HOY-YES TO TRUE
+                NOT AT END
+                   MOVE HOY-CUENTA TO WS-CUENTA-HOY
+           END-READ.
+       300000-COMPARAR-CUENTAS.
+           IF WS-CUENTA-HOY < WS-CUENTA-AYER
+              PERFORM 310000-GUARDAR-CUENTA-NUEVA
+              PERFORM 220000-LEER-HOY
+           ELSE
+              IF WS-CUENTA-HOY > WS-CUENTA-AYER
+                 PERFORM 210000-LEER-AYER
+              ELSE
+                 PERFORM 210000-LEER-AYER
+                 PERFORM 220000-LEER-HOY
+              END-IF
+           END-IF.
+       310000-GUARDAR-CUENTA-NUEVA.
+           MOVE HOY-CUENTA TO NUEVA-CUENTA
+           MOVE HOY-CLIENTE TO NUEVA-CLIENTE
+           WRITE REG-NUEVAS
+                INVALID KEY
+                   DISPLAY "ERROR AL ESCRIBIR EN CUENTAS-NUEVAS"
+                NOT INVALID KEY
+                   CONTINUE
+           END-WRITE.
+       400000-CERRAR-ARCHIVOS.
+           CLOSE                       CUENTAS-AYER
+           CLOSE                       CUENTAS-HOY
+           CLOSE                       CUENTAS-NUEVAS.
